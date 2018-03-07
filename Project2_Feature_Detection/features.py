@@ -247,6 +247,9 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
         grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         desc = np.zeros((len(keypoints), 5 * 5))
 
+        pad_image=np.zeros((len(grayImage)+4, len(grayImage[0])+4))
+        pad_image[2:-2,2:-2]=grayImage
+
         for i, f in enumerate(keypoints):
             x, y = f.pt
             x, y = int(x), int(y)
@@ -255,7 +258,8 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
             # sampled centered on the feature point. Store the descriptor
             # as a row-major vector. Treat pixels outside the image as zero.
             # TODO-BLOCK-BEGIN
-            raise Exception("TODO in features.py not implemented")
+            window=pad_image[y:y+5,x:x+5]
+            desc[i,:]=window.reshape((25,))
             # TODO-BLOCK-END
 
         return desc
@@ -291,7 +295,17 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             transMx = np.zeros((2, 3))
 
             # TODO-BLOCK-BEGIN
-            raise Exception("TODO in features.py not implemented")
+            x, y = f.pt
+            angle = - f.angle / 180.0 * np.pi
+            S = np.array([[1.0/5, 0, 0], [0, 1.0/5, 0], [0, 0, 1]])
+            T2 = np.array([[1, 0, 4], [0, 1, 4], [0, 0, 1]])
+            M=np.dot(T2, S)
+            cos = math.cos(angle)
+            sin = math.sin(angle)
+            M=np.dot(M, np.array([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]]))
+            M=np.dot(M,np.array([[1, 0, -x],[0, 1, -y],[0, 0, 1]]))
+            transMx = M[:2,:3]
+
             # TODO-BLOCK-END
 
             # Call the warp affine function to do the mapping
@@ -303,7 +317,12 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             # variance. If the variance is zero then set the descriptor
             # vector to zero. Lastly, write the vector to desc.
             # TODO-BLOCK-BEGIN
-            raise Exception("TODO in features.py not implemented")
+            resImage=destImage[:windowSize,:windowSize]
+            if np.std(resImage) <= 10**(-5):
+                desc[i,:]=np.zeros((windowSize*windowSize,))
+            else:
+                resImage=(resImage-np.mean(resImage))/np.std(resImage)
+                desc[i,:] = resImage.reshape((windowSize*windowSize,))
             # TODO-BLOCK-END
 
         return desc
